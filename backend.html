@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Kindred</title>
+
+<style>
+body{
+  font-family: Arial;
+  text-align:center;
+}
+
+#hearth {
+  width:300px;
+  height:200px;
+  background:black;
+  margin:auto;
+  overflow:hidden;
+  position:relative;
+}
+
+.light{
+  width:10px;
+  height:10px;
+  background:orange;
+  border-radius:50%;
+  position:absolute;
+  animation: float 3s linear infinite;
+}
+
+@keyframes float{
+  0%{transform:translateY(200px); opacity:1;}
+  100%{transform:translateY(0px); opacity:0;}
+}
+</style>
+
+</head>
+<body>
+
+<h1>Kindred</h1>
+
+<h2>Login / Register</h2>
+<input id="email" placeholder="Email">
+<input id="password" placeholder="Password" type="password">
+<br><br>
+<button onclick="register()">Register</button>
+<button onclick="login()">Login</button>
+
+<hr>
+
+<h2>Post Vulnerability</h2>
+<input id="message" placeholder="I feel...">
+<button onclick="postVulnerability()">Post</button>
+
+<hr>
+
+<h2>Requests</h2>
+<ul id="vulnList"></ul>
+
+<hr>
+
+<h2>Leaderboard</h2>
+<ul id="leaderboard"></ul>
+
+<hr>
+
+<h2>🔥 Global Hearth</h2>
+<div id="hearth"></div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword }
+from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, updateDoc, doc }
+from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCAQi32NN7mFijZ4dxtvZgqAo3EHyFiY2g",
+  authDomain: "kindred-d6d28.firebaseapp.com",
+  projectId: "kindred-d6d28",
+  storageBucket: "kindred-d6d28.firebasestorage.app",
+  messagingSenderId: "844441836993",
+  appId: "1:844441836993:web:627964975313422fdca340"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let currentUser = null;
+
+
+window.register = async function(){
+  const email = emailInput.value;
+  const pass = password.value;
+
+  const userCred = await createUserWithEmailAndPassword(auth,email,pass);
+  currentUser = userCred.user;
+
+  await addDoc(collection(db,"users"),{
+    uid:currentUser.uid,
+    email:email,
+    points:0
+  });
+
+  alert("Registered!");
+}
+
+
+window.login = async function(){
+  const email = emailInput.value;
+  const pass = password.value;
+
+  const userCred = await signInWithEmailAndPassword(auth,email,pass);
+  currentUser = userCred.user;
+
+  alert("Login success");
+
+  loadVulnerabilities();
+  loadLeaderboard();
+}
+
+
+window.postVulnerability = async function(){
+  const msg = message.value;
+
+  await addDoc(collection(db,"vulnerabilities"),{
+    uid:currentUser.uid,
+    message:msg,
+    time:Date.now()
+  });
+
+  alert("Posted!");
+
+  loadVulnerabilities();
+
+  setTimeout(()=>{
+    alert("Ripple Activated 🌊 Expanding request...");
+  },20000);
+}
+
+
+async function loadVulnerabilities(){
+  const snap = await getDocs(collection(db,"vulnerabilities"));
+  vulnList.innerHTML="";
+
+  snap.forEach(docu=>{
+    const li=document.createElement("li");
+
+    const text=document.createElement("span");
+    text.textContent=docu.data().message+" ";
+
+    const btn=document.createElement("button");
+    btn.textContent="Help ❤️";
+
+    btn.onclick=async()=>{
+      await givePoints(currentUser.uid);
+      alert("You earned 50 points!");
+      loadLeaderboard();
+    };
+
+    li.appendChild(text);
+    li.appendChild(btn);
+    vulnList.appendChild(li);
+  });
+}
+
+async function givePoints(uid){
+  const snap = await getDocs(collection(db,"users"));
+
+  snap.forEach(async d=>{
+    if(d.data().uid===uid){
+      await updateDoc(doc(db,"users",d.id),{
+        points:d.data().points+50
+      });
+    }
+  });
+}
+
+async function loadLeaderboard(){
+  const snap = await getDocs(collection(db,"users"));
+  leaderboard.innerHTML="";
+
+  snap.forEach(d=>{
+    const li=document.createElement("li");
+    li.textContent=d.data().email+" — "+d.data().points+" pts";
+    leaderboard.appendChild(li);
+  });
+}
+
+function startHearth(){
+  setInterval(()=>{
+    const dot=document.createElement("div");
+    dot.className="light";
+    dot.style.left=Math.random()*300+"px";
+    hearth.appendChild(dot);
+
+    setTimeout(()=>hearth.removeChild(dot),3000);
+  },400);
+}
+startHearth();
+
+</script>
+</body>
+</html>
